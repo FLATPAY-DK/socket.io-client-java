@@ -72,15 +72,17 @@ public class Manager extends Emitter {
     private long _reconnectionDelay;
     private long _reconnectionDelayMax;
     private double _randomizationFactor;
-    private Backoff backoff;
     private long _timeout;
-    private URI uri;
-    private List<Packet> packetBuffer;
-    private Queue<On.Handle> subs;
-    private Options opts;
+
+    private final Backoff backoff;
+    private final URI uri;
+    private final List<Packet> packetBuffer;
+    private final Queue<On.Handle> subs;
+    private final Options opts;
+    private final Parser.Encoder encoder;
+    private final Parser.Decoder decoder;
+
     /*package*/ io.socket.engineio.client.Socket engine;
-    private Parser.Encoder encoder;
-    private Parser.Decoder decoder;
 
     /**
      * This HashMap can be accessed from outside of EventThread.
@@ -114,32 +116,32 @@ public class Manager extends Emitter {
             opts.callFactory = defaultCallFactory;
         }
         this.opts = opts;
-        this.nsps = new ConcurrentHashMap<>();
-        this.subs = new LinkedList<>();
-        this.reconnection(opts.reconnection);
-        this.reconnectionAttempts(opts.reconnectionAttempts != 0 ? opts.reconnectionAttempts : Integer.MAX_VALUE);
-        this.reconnectionDelay(opts.reconnectionDelay != 0 ? opts.reconnectionDelay : 1000);
-        this.reconnectionDelayMax(opts.reconnectionDelayMax != 0 ? opts.reconnectionDelayMax : 5000);
-        this.randomizationFactor(opts.randomizationFactor != 0.0 ? opts.randomizationFactor : 0.5);
-        this.backoff = new Backoff()
-                .setMin(this.reconnectionDelay())
-                .setMax(this.reconnectionDelayMax())
-                .setJitter(this.randomizationFactor());
-        this.timeout(opts.timeout);
-        this.readyState = ReadyState.CLOSED;
+        nsps = new ConcurrentHashMap<>();
+        subs = new LinkedList<>();
+        reconnection(opts.reconnection);
+        reconnectionAttempts(opts.reconnectionAttempts != 0 ? opts.reconnectionAttempts : Integer.MAX_VALUE);
+        reconnectionDelay(opts.reconnectionDelay != 0 ? opts.reconnectionDelay : 1000);
+        reconnectionDelayMax(opts.reconnectionDelayMax != 0 ? opts.reconnectionDelayMax : 5000);
+        randomizationFactor(opts.randomizationFactor != 0.0 ? opts.randomizationFactor : 0.5);
+        backoff = new Backoff()
+                .setMin(reconnectionDelay())
+                .setMax(reconnectionDelayMax())
+                .setJitter(randomizationFactor());
+        timeout(opts.timeout);
+        readyState = ReadyState.CLOSED;
         this.uri = uri;
-        this.encoding = false;
-        this.packetBuffer = new ArrayList<>();
-        this.encoder = opts.encoder != null ? opts.encoder : new IOParser.Encoder();
-        this.decoder = opts.decoder != null ? opts.decoder : new IOParser.Decoder();
+        encoding = false;
+        packetBuffer = new ArrayList<>();
+        encoder = opts.encoder != null ? opts.encoder : new IOParser.Encoder();
+        decoder = opts.decoder != null ? opts.decoder : new IOParser.Decoder();
     }
 
     public boolean reconnection() {
-        return this._reconnection;
+        return _reconnection;
     }
 
     public Manager reconnection(boolean v) {
-        this._reconnection = v;
+        _reconnection = v;
         return this;
     }
 
@@ -148,63 +150,63 @@ public class Manager extends Emitter {
     }
 
     public int reconnectionAttempts() {
-        return this._reconnectionAttempts;
+        return _reconnectionAttempts;
     }
 
     public Manager reconnectionAttempts(int v) {
-        this._reconnectionAttempts = v;
+        _reconnectionAttempts = v;
         return this;
     }
 
     public final long reconnectionDelay() {
-        return this._reconnectionDelay;
+        return _reconnectionDelay;
     }
 
     public Manager reconnectionDelay(long v) {
-        this._reconnectionDelay = v;
-        if (this.backoff != null) {
-            this.backoff.setMin(v);
+        _reconnectionDelay = v;
+        if (backoff != null) {
+            backoff.setMin(v);
         }
         return this;
     }
 
     public final double randomizationFactor() {
-        return this._randomizationFactor;
+        return _randomizationFactor;
     }
 
     public Manager randomizationFactor(double v) {
-        this._randomizationFactor = v;
-        if (this.backoff != null) {
-            this.backoff.setJitter(v);
+        _randomizationFactor = v;
+        if (backoff != null) {
+            backoff.setJitter(v);
         }
         return this;
     }
 
     public final long reconnectionDelayMax() {
-        return this._reconnectionDelayMax;
+        return _reconnectionDelayMax;
     }
 
     public Manager reconnectionDelayMax(long v) {
-        this._reconnectionDelayMax = v;
-        if (this.backoff != null) {
-            this.backoff.setMax(v);
+        _reconnectionDelayMax = v;
+        if (backoff != null) {
+            backoff.setMax(v);
         }
         return this;
     }
 
     public long timeout() {
-        return this._timeout;
+        return _timeout;
     }
 
     public Manager timeout(long v) {
-        this._timeout = v;
+        _timeout = v;
         return this;
     }
 
     private void maybeReconnectOnOpen() {
         // Only try to reconnect if it's the first time we're connecting
-        if (!this.reconnecting && this._reconnection && this.backoff.getAttempts() == 0) {
-            this.reconnect();
+        if (!reconnecting && _reconnection && backoff.getAttempts() == 0) {
+            reconnect();
         }
     }
 
@@ -230,7 +232,7 @@ public class Manager extends Emitter {
             }
             engine = new Engine(uri, opts);
             final io.socket.engineio.client.Socket socket = engine;
-            final Manager self = Manager.this;
+            final Manager self = this;
             readyState = ReadyState.OPENING;
             skipReconnect = false;
 
@@ -312,18 +314,18 @@ public class Manager extends Emitter {
                 logger.fine("error while decoding the packet: " + e.getMessage());
             }
         }));
-        subs.add(On.on(socket, Engine.EVENT_ERROR, objects -> onerror((Exception)objects[0])));
-        subs.add(On.on(socket, Engine.EVENT_CLOSE, objects -> onclose((String)objects[0])));
-        decoder.onDecoded(this::ondecoded);
+        subs.add(On.on(socket, Engine.EVENT_ERROR, objects -> onError((Exception)objects[0])));
+        subs.add(On.on(socket, Engine.EVENT_CLOSE, objects -> onClose((String)objects[0])));
+        decoder.onDecoded(this::onDecoded);
     }
 
-    private void ondecoded(Packet packet) {
-        this.emit(EVENT_PACKET, packet);
+    private void onDecoded(Packet packet) {
+        emit(EVENT_PACKET, packet);
     }
 
-    private void onerror(Exception err) {
+    private void onError(Exception err) {
         logger.log(Level.FINE, "error", err);
-        this.emit(EVENT_ERROR, err);
+        emit(EVENT_ERROR, err);
     }
 
     /**
@@ -334,11 +336,11 @@ public class Manager extends Emitter {
      * @return a socket instance for the namespace.
      */
     public Socket socket(final String nsp, Options opts) {
-        synchronized (this.nsps) {
-            Socket socket = this.nsps.get(nsp);
+        synchronized (nsps) {
+            Socket socket = nsps.get(nsp);
             if (socket == null) {
                 socket = new Socket(this, nsp, opts);
-                this.nsps.put(nsp, socket);
+                nsps.put(nsp, socket);
             }
             return socket;
         }
@@ -349,15 +351,15 @@ public class Manager extends Emitter {
     }
 
     /*package*/ void destroy() {
-        synchronized (this.nsps) {
-            for (Socket socket : this.nsps.values()) {
+        synchronized (nsps) {
+            for (Socket socket : nsps.values()) {
                 if (socket.isActive()) {
                     logger.fine("socket is still active, skipping close");
                     return;
                 }
             }
 
-            this.close();
+            close();
         }
     }
 
@@ -369,7 +371,7 @@ public class Manager extends Emitter {
 
         if (!self.encoding) {
             self.encoding = true;
-            this.encoder.encode(packet, new Parser.Encoder.Callback() {
+            encoder.encode(packet, new Parser.Encoder.Callback() {
                 @Override
                 public void call(Object[] encodedPackets) {
                     for (Object packet : encodedPackets) {
@@ -389,9 +391,9 @@ public class Manager extends Emitter {
     }
 
     private void processPacketQueue() {
-        if (!this.packetBuffer.isEmpty() && !this.encoding) {
-            Packet pack = this.packetBuffer.remove(0);
-            this.packet(pack);
+        if (!packetBuffer.isEmpty() && !encoding) {
+            Packet pack = packetBuffer.remove(0);
+            packet(pack);
         }
     }
 
@@ -399,58 +401,58 @@ public class Manager extends Emitter {
         logger.fine("cleanup");
 
         On.Handle sub;
-        while ((sub = this.subs.poll()) != null) sub.destroy();
-        this.decoder.onDecoded(null);
+        while ((sub = subs.poll()) != null) sub.destroy();
+        decoder.onDecoded(null);
 
-        this.packetBuffer.clear();
-        this.encoding = false;
+        packetBuffer.clear();
+        encoding = false;
 
-        this.decoder.destroy();
+        decoder.destroy();
     }
 
     /*package*/ void close() {
         logger.fine("disconnect");
-        this.skipReconnect = true;
-        this.reconnecting = false;
-        if (this.readyState != ReadyState.OPEN) {
+        skipReconnect = true;
+        reconnecting = false;
+        if (readyState != ReadyState.OPEN) {
             // `onclose` will not fire because
             // an open event never happened
-            this.cleanup();
+            cleanup();
         }
-        this.backoff.reset();
-        this.readyState = ReadyState.CLOSED;
-        if (this.engine != null) {
-            this.engine.close();
+        backoff.reset();
+        readyState = ReadyState.CLOSED;
+        if (engine != null) {
+            engine.close();
         }
     }
 
-    private void onclose(String reason) {
+    private void onClose(String reason) {
         logger.fine("onclose");
-        this.cleanup();
-        this.backoff.reset();
-        this.readyState = ReadyState.CLOSED;
-        this.emit(EVENT_CLOSE, reason);
+        cleanup();
+        backoff.reset();
+        readyState = ReadyState.CLOSED;
+        emit(EVENT_CLOSE, reason);
 
-        if (this._reconnection && !this.skipReconnect) {
-            this.reconnect();
+        if (_reconnection && !skipReconnect) {
+            reconnect();
         }
     }
 
     private void reconnect() {
-        if (this.reconnecting || this.skipReconnect) return;
+        if (reconnecting || skipReconnect) return;
 
         final Manager self = this;
 
-        if (this.backoff.getAttempts() >= this._reconnectionAttempts) {
+        if (backoff.getAttempts() >= _reconnectionAttempts) {
             logger.fine("reconnect failed");
-            this.backoff.reset();
-            this.emit(EVENT_RECONNECT_FAILED);
-            this.reconnecting = false;
+            backoff.reset();
+            emit(EVENT_RECONNECT_FAILED);
+            reconnecting = false;
         } else {
-            long delay = this.backoff.duration();
+            long delay = backoff.duration();
             logger.fine(String.format("will wait %dms before reconnect attempt", delay));
 
-            this.reconnecting = true;
+            reconnecting = true;
             final Timer timer = new Timer();
             timer.schedule(new TimerTask() {
                 @Override
@@ -477,7 +479,7 @@ public class Manager extends Emitter {
                                         self.emit(EVENT_RECONNECT_ERROR, err);
                                     } else {
                                         logger.fine("reconnect success");
-                                        self.onreconnect();
+                                        self.onReconnect();
                                     }
                                 }
                             });
@@ -486,7 +488,7 @@ public class Manager extends Emitter {
                 }
             }, delay);
 
-            this.subs.add(new On.Handle() {
+            subs.add(new On.Handle() {
                 @Override
                 public void destroy() {
                     timer.cancel();
@@ -495,11 +497,11 @@ public class Manager extends Emitter {
         }
     }
 
-    private void onreconnect() {
-        int attempts = this.backoff.getAttempts();
-        this.reconnecting = false;
-        this.backoff.reset();
-        this.emit(EVENT_RECONNECT, attempts);
+    private void onReconnect() {
+        int attempts = backoff.getAttempts();
+        reconnecting = false;
+        backoff.reset();
+        emit(EVENT_RECONNECT, attempts);
     }
 
 
