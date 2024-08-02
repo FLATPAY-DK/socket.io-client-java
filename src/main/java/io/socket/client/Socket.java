@@ -222,7 +222,7 @@ public class Socket extends Emitter {
                 }
             }
         }
-        packet.nsp = this.namespace;
+        packet.namespace = this.namespace;
         this.io.packet(packet);
     }
 
@@ -261,7 +261,7 @@ public class Socket extends Emitter {
     }
 
     private void onPacket(Packet<?> packet) {
-        if (!this.namespace.equals(packet.nsp)) return;
+        if (!this.namespace.equals(packet.namespace)) return;
 
         switch (packet.type) {
             case Parser.CONNECT: {

@@ -68,7 +68,7 @@ public class Helpers {
     public static void assertPacket(Packet expected, Packet actual) {
         assertThat(actual.type, is(expected.type));
         assertThat(actual.id, is(expected.id));
-        assertThat(actual.nsp, is(expected.nsp));
+        assertThat(actual.namespace, is(expected.namespace));
         assertThat(actual.attachments, is(expected.attachments));
 
         if (expected.data instanceof JSONArray) {

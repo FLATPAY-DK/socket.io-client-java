@@ -48,8 +48,8 @@ final public class IOParser implements Parser {
                 str.append("-");
             }
 
-            if (obj.nsp != null && !obj.nsp.isEmpty() && !"/".equals(obj.nsp)) {
-                str.append(obj.nsp);
+            if (obj.namespace != null && !obj.namespace.isEmpty() && !"/".equals(obj.namespace)) {
+                str.append(obj.namespace);
                 str.append(",");
             }
 
@@ -150,9 +150,9 @@ final public class IOParser implements Parser {
                     nsp.append(c);
                     if (i + 1 == length) break;
                 }
-                p.nsp = nsp.toString();
+                p.namespace = nsp.toString();
             } else {
-                p.nsp = "/";
+                p.namespace = "/";
             }
 
             if (length > i + 1){
