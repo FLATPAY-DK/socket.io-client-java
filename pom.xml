@@ -6,7 +6,7 @@
   <packaging>jar</packaging>
   <name>socket.io-client</name>
   <description>Socket.IO Client Library for Java - Flatpay fork</description>
-  <url>https://github.com/FLATPAY-DK/engine.io-client-java/</url>
+  <url>https://github.com/FLATPAY-DK/socket.io-client-java/</url>
 
   <properties>
     <github.global.server>github</github.global.server>
