@@ -238,7 +238,7 @@ public class Manager extends Emitter {
             socket.on(Engine.EVENT_TRANSPORT, args -> self.emit(Manager.EVENT_TRANSPORT, args));
 
             final On.Handle openSub = On.on(socket, Engine.EVENT_OPEN, objects -> {
-                self.onopen();
+                self.onOpen();
                 if (fn != null) fn.call(null);
             });
 
@@ -291,48 +291,30 @@ public class Manager extends Emitter {
         return this;
     }
 
-    private void onopen() {
+    private void onOpen() {
         logger.fine("open");
 
-        this.cleanup();
+        cleanup();
 
-        this.readyState = ReadyState.OPEN;
-        this.emit(EVENT_OPEN);
+        readyState = ReadyState.OPEN;
+        emit(EVENT_OPEN);
 
-        final io.socket.engineio.client.Socket socket = this.engine;
-        this.subs.add(On.on(socket, Engine.EVENT_DATA, new Listener() {
-            @Override
-            public void call(Object... objects) {
-                Object data = objects[0];
-                try {
-                    if (data instanceof String) {
-                        Manager.this.decoder.add((String) data);
-                    } else if (data instanceof byte[]) {
-                        Manager.this.decoder.add((byte[]) data);
-                    }
-                } catch (DecodingException e) {
-                    logger.fine("error while decoding the packet: " + e.getMessage());
+        final io.socket.engineio.client.Socket socket = engine;
+        subs.add(On.on(socket, Engine.EVENT_DATA, objects -> {
+            Object data = objects[0];
+            try {
+                if (data instanceof String) {
+                    decoder.add((String) data);
+                } else if (data instanceof byte[]) {
+                    decoder.add((byte[]) data);
                 }
+            } catch (DecodingException e) {
+                logger.fine("error while decoding the packet: " + e.getMessage());
             }
         }));
-        this.subs.add(On.on(socket, Engine.EVENT_ERROR, new Listener() {
-            @Override
-            public void call(Object... objects) {
-                Manager.this.onerror((Exception)objects[0]);
-            }
-        }));
-        this.subs.add(On.on(socket, Engine.EVENT_CLOSE, new Listener() {
-            @Override
-            public void call(Object... objects) {
-                Manager.this.onclose((String)objects[0]);
-            }
-        }));
-        this.decoder.onDecoded(new Parser.Decoder.Callback() {
-            @Override
-            public void call (Packet packet) {
-                Manager.this.ondecoded(packet);
-            }
-        });
+        subs.add(On.on(socket, Engine.EVENT_ERROR, objects -> onerror((Exception)objects[0])));
+        subs.add(On.on(socket, Engine.EVENT_CLOSE, objects -> onclose((String)objects[0])));
+        decoder.onDecoded(this::ondecoded);
     }
 
     private void ondecoded(Packet packet) {
