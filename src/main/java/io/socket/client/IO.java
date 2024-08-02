@@ -62,7 +62,7 @@ public class IO {
         String id = parsed.id;
 
         boolean sameNamespace = managers.containsKey(id)
-                && managers.get(id).nsps.containsKey(source.getPath());
+                && managers.get(id).namespaces.containsKey(source.getPath());
         boolean newConnection = opts.forceNew || !opts.multiplex || sameNamespace;
         Manager io;
 
@@ -108,7 +108,7 @@ public class IO {
          * SocketOptionBuilder builder = SocketOptionBuilder.builder();
          * </code>
          *
-         * @return builder class that helps creating socket option as builder pattern.
+         * @return builder class that helps to create socket option as builder pattern.
          * @see SocketOptionBuilder#builder()
          */
         public static SocketOptionBuilder builder() {

@@ -23,7 +23,7 @@ public class ByteArrayTest {
         Packet<JSONArray> packet = new Packet<>(Parser.BINARY_EVENT);
         packet.data = new JSONArray(asList("abc", "abc".getBytes(StandardCharsets.UTF_8)));
         packet.id = 23;
-        packet.nsp = "/cool";
+        packet.namespace = "/cool";
         Helpers.testBin(packet);
     }
 
@@ -32,7 +32,7 @@ public class ByteArrayTest {
         Packet<JSONArray> packet = new Packet<>(Parser.BINARY_EVENT);
         packet.data = new JSONArray(asList("2", new byte[] { 0, 1 }));
         packet.id = 0;
-        packet.nsp = "/";
+        packet.namespace = "/";
         Helpers.testBin(packet);
     }
 
@@ -45,7 +45,7 @@ public class ByteArrayTest {
         Packet<JSONArray> packet = new Packet<>(Parser.BINARY_EVENT);
         packet.data = data;
         packet.id = 999;
-        packet.nsp = "/deep";
+        packet.namespace = "/deep";
         Helpers.testBin(packet);
     }
 
@@ -56,7 +56,7 @@ public class ByteArrayTest {
 
         Packet<JSONArray> packet = new Packet<>(Parser.BINARY_EVENT);
         packet.data = data;
-        packet.nsp = "/";
+        packet.namespace = "/";
         packet.id = 600;
         Helpers.testBin(packet);
     }
@@ -69,7 +69,7 @@ public class ByteArrayTest {
         Packet<JSONArray> packet = new Packet<>(Parser.BINARY_ACK);
         packet.data = data;
         packet.id = 127;
-        packet.nsp = "/back";
+        packet.namespace = "/back";
         Helpers.testBin(packet);
     }
 
@@ -82,7 +82,7 @@ public class ByteArrayTest {
         Packet<JSONArray> packet = new Packet<>(Parser.BINARY_EVENT);
         packet.data = data;
         packet.id = 0;
-        packet.nsp = "/";
+        packet.namespace = "/";
 
         encoder.encode(packet, new Parser.Encoder.Callback() {
             @Override

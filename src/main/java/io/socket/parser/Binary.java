@@ -18,7 +18,6 @@ public class Binary {
     
     private static final Logger logger = Logger.getLogger(Binary.class.getName());
 
-    @SuppressWarnings("unchecked")
     public static DeconstructedPacket deconstructPacket(Packet packet) {
         List<byte[]> buffers = new ArrayList<>();
 
@@ -45,9 +44,8 @@ public class Binary {
             }
             buffers.add((byte[])data);
             return placeholder;
-        } else if (data instanceof JSONArray) {
+        } else if (data instanceof JSONArray _data) {
             JSONArray newData = new JSONArray();
-            JSONArray _data = (JSONArray)data;
             int len = _data.length();
             for (int i = 0; i < len; i ++) {
                 try {
@@ -58,9 +56,8 @@ public class Binary {
                 }
             }
             return newData;
-        } else if (data instanceof JSONObject) {
+        } else if (data instanceof JSONObject _data) {
             JSONObject newData = new JSONObject();
-            JSONObject _data = (JSONObject)data;
             Iterator<?> iterator = _data.keys();
             while (iterator.hasNext()) {
                 String key = (String)iterator.next();
@@ -76,7 +73,6 @@ public class Binary {
         return data;
     }
 
-    @SuppressWarnings("unchecked")
     public static Packet reconstructPacket(Packet packet, byte[][] buffers) {
         packet.data = _reconstructPacket(packet.data, buffers);
         packet.attachments = -1;
@@ -84,8 +80,7 @@ public class Binary {
     }
 
     private static Object _reconstructPacket(Object data, byte[][] buffers) {
-        if (data instanceof JSONArray) {
-            JSONArray _data = (JSONArray)data;
+        if (data instanceof JSONArray _data) {
             int len = _data.length();
             for (int i = 0; i < len; i ++) {
                 try {
@@ -96,8 +91,7 @@ public class Binary {
                 }
             }
             return _data;
-        } else if (data instanceof JSONObject) {
-            JSONObject _data = (JSONObject)data;
+        } else if (data instanceof JSONObject _data) {
             if (_data.optBoolean(KEY_PLACEHOLDER)) {
                 int num = _data.optInt(KEY_NUM, -1);
                 return num >= 0 && num < buffers.length ? buffers[num] : null;

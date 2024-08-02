@@ -17,14 +17,14 @@ public class ParserTest {
     @Test
     public void encodeConnection() {
         Packet packet = new Packet(Parser.CONNECT);
-        packet.nsp = "/woot";
+        packet.namespace = "/woot";
         Helpers.test(packet);
     }
 
     @Test
     public void encodeDisconnection() {
         Packet packet = new Packet(Parser.DISCONNECT);
-        packet.nsp = "/woot";
+        packet.namespace = "/woot";
         Helpers.test(packet);
     }
 
@@ -32,12 +32,12 @@ public class ParserTest {
     public void encodeEvent() throws JSONException {
         Packet<JSONArray> packet1 = new Packet<>(Parser.EVENT);
         packet1.data = new JSONArray("[\"a\", 1, {}]");
-        packet1.nsp = "/";
+        packet1.namespace = "/";
         Helpers.test(packet1);
 
         Packet<JSONArray> packet2 = new Packet<>(Parser.EVENT);
         packet2.data = new JSONArray("[\"a\", 1, {}]");
-        packet2.nsp = "/test";
+        packet2.namespace = "/test";
         Helpers.test(packet2);
     }
 
@@ -46,7 +46,7 @@ public class ParserTest {
         Packet<JSONArray> packet = new Packet<>(Parser.ACK);
         packet.data = new JSONArray("[\"a\", 1, {}]");
         packet.id = 123;
-        packet.nsp = "/";
+        packet.namespace = "/";
         Helpers.test(packet);
     }
 

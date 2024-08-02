@@ -9,7 +9,7 @@ public class Url {
     /**
      * Expected format: "[id:password@]host[:port]"
      */
-    private static Pattern PATTERN_AUTHORITY = Pattern.compile("^(.*@)?([^:]+)(:\\d+)?$");
+    private static final Pattern PATTERN_AUTHORITY = Pattern.compile("^(.*@)?([^:]+)(:\\d+)?$");
 
     private Url() {}
 
@@ -39,7 +39,7 @@ public class Url {
         }
 
         String path = uri.getRawPath();
-        if (path == null || path.length() == 0) {
+        if (path == null || path.isEmpty()) {
             path = "/";
         }
 

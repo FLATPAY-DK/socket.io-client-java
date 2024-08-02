@@ -5,7 +5,7 @@ public class Packet<T> {
 
     public int type = -1;
     public int id = -1;
-    public String nsp;
+    public String namespace;
     public T data;
     public int attachments;
 

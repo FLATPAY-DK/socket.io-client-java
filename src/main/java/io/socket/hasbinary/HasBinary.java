@@ -25,8 +25,7 @@ public class HasBinary {
             return true;
         }
 
-        if (obj instanceof JSONArray) {
-            JSONArray _obj = (JSONArray)obj;
+        if (obj instanceof JSONArray _obj) {
             int length = _obj.length();
             for (int i = 0; i < length; i++) {
                 Object v;
@@ -40,11 +39,10 @@ public class HasBinary {
                     return true;
                 }
             }
-        } else if (obj instanceof JSONObject) {
-            JSONObject _obj = (JSONObject)obj;
+        } else if (obj instanceof JSONObject _obj) {
             Iterator keys = _obj.keys();
             while (keys.hasNext()) {
-                String key = (String)keys.next();
+                String key = (String) keys.next();
                 Object v;
                 try {
                     v = _obj.get(key);
