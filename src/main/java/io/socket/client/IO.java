@@ -108,7 +108,7 @@ public class IO {
          * SocketOptionBuilder builder = SocketOptionBuilder.builder();
          * </code>
          *
-         * @return builder class that helps creating socket option as builder pattern.
+         * @return builder class that helps to create socket option as builder pattern.
          * @see SocketOptionBuilder#builder()
          */
         public static SocketOptionBuilder builder() {
