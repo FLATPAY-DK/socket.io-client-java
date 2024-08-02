@@ -219,96 +219,74 @@ public class Manager extends Emitter {
      * @return a reference to this object.
      */
     public Manager open(final OpenCallback fn) {
-        EventThread.exec(new Runnable() {
-            @Override
-            public void run() {
-                if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("readyState %s", Manager.this.readyState));
+        EventThread.exec(() -> {
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("readyState %s", readyState));
+            }
+            if (readyState == ReadyState.OPEN || readyState == ReadyState.OPENING) return;
+
+            if (logger.isLoggable(Level.FINE)) {
+                logger.fine(String.format("opening %s", uri));
+            }
+            engine = new Engine(uri, opts);
+            final io.socket.engineio.client.Socket socket = engine;
+            final Manager self = Manager.this;
+            readyState = ReadyState.OPENING;
+            skipReconnect = false;
+
+            // propagate transport event.
+            socket.on(Engine.EVENT_TRANSPORT, args -> self.emit(Manager.EVENT_TRANSPORT, args));
+
+            final On.Handle openSub = On.on(socket, Engine.EVENT_OPEN, objects -> {
+                self.onopen();
+                if (fn != null) fn.call(null);
+            });
+
+            On.Handle errorSub = On.on(socket, Engine.EVENT_ERROR, objects -> {
+                Object data = objects.length > 0 ? objects[0] : null;
+                logger.fine("connect_error");
+                self.cleanup();
+                self.readyState = ReadyState.CLOSED;
+                self.emit(EVENT_ERROR, data);
+                if (fn != null) {
+                    Exception err = new SocketIOException("Connection error",
+                            data instanceof Exception ? (Exception) data : null);
+                    fn.call(err);
+                } else {
+                    // Only do this if there is no fn to handle the error
+                    self.maybeReconnectOnOpen();
                 }
-                if (Manager.this.readyState == ReadyState.OPEN || Manager.this.readyState == ReadyState.OPENING) return;
+            });
 
-                if (logger.isLoggable(Level.FINE)) {
-                    logger.fine(String.format("opening %s", Manager.this.uri));
-                }
-                Manager.this.engine = new Engine(Manager.this.uri, Manager.this.opts);
-                final io.socket.engineio.client.Socket socket = Manager.this.engine;
-                final Manager self = Manager.this;
-                Manager.this.readyState = ReadyState.OPENING;
-                Manager.this.skipReconnect = false;
+            final long timeout = _timeout;
+            final Runnable onTimeout = () -> {
+                logger.fine(String.format("connect attempt timed out after %d", timeout));
+                openSub.destroy();
+                socket.close();
+                socket.emit(Engine.EVENT_ERROR, new SocketIOException("timeout"));
+            };
 
-                // propagate transport event.
-                socket.on(Engine.EVENT_TRANSPORT, new Listener() {
-                    @Override
-                    public void call(Object... args) {
-                        self.emit(Manager.EVENT_TRANSPORT, args);
-                    }
-                });
+            if (timeout == 0) {
+                EventThread.exec(onTimeout);
+                return;
+            } else if (_timeout > 0) {
+                logger.fine(String.format("connection attempt will timeout after %d", timeout));
 
-                final On.Handle openSub = On.on(socket, Engine.EVENT_OPEN, new Listener() {
-                    @Override
-                    public void call(Object... objects) {
-                        self.onopen();
-                        if (fn != null) fn.call(null);
-                    }
-                });
-
-                On.Handle errorSub = On.on(socket, Engine.EVENT_ERROR, new Listener() {
-                    @Override
-                    public void call(Object... objects) {
-                        Object data = objects.length > 0 ? objects[0] : null;
-                        logger.fine("connect_error");
-                        self.cleanup();
-                        self.readyState = ReadyState.CLOSED;
-                        self.emit(EVENT_ERROR, data);
-                        if (fn != null) {
-                            Exception err = new SocketIOException("Connection error",
-                                    data instanceof Exception ? (Exception) data : null);
-                            fn.call(err);
-                        } else {
-                            // Only do this if there is no fn to handle the error
-                            self.maybeReconnectOnOpen();
-                        }
-                    }
-                });
-
-                final long timeout = Manager.this._timeout;
-                final Runnable onTimeout = new Runnable() {
+                final Timer timer = new Timer();
+                timer.schedule(new TimerTask() {
                     @Override
                     public void run() {
-                        logger.fine(String.format("connect attempt timed out after %d", timeout));
-                        openSub.destroy();
-                        socket.close();
-                        socket.emit(Engine.EVENT_ERROR, new SocketIOException("timeout"));
+                        EventThread.exec(onTimeout);
                     }
-                };
+                }, timeout);
 
-                if (timeout == 0) {
-                    EventThread.exec(onTimeout);
-                    return;
-                } else if (Manager.this._timeout > 0) {
-                    logger.fine(String.format("connection attempt will timeout after %d", timeout));
-
-                    final Timer timer = new Timer();
-                    timer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            EventThread.exec(onTimeout);
-                        }
-                    }, timeout);
-
-                    Manager.this.subs.add(new On.Handle() {
-                        @Override
-                        public void destroy() {
-                            timer.cancel();
-                        }
-                    });
-                }
-
-                Manager.this.subs.add(openSub);
-                Manager.this.subs.add(errorSub);
-
-                Manager.this.engine.open();
+                subs.add(timer::cancel);
             }
+
+            subs.add(openSub);
+            subs.add(errorSub);
+
+            engine.open();
         });
         return this;
     }
