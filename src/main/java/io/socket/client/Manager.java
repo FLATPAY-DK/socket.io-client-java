@@ -371,19 +371,16 @@ public class Manager extends Emitter {
 
         if (!self.encoding) {
             self.encoding = true;
-            encoder.encode(packet, new Parser.Encoder.Callback() {
-                @Override
-                public void call(Object[] encodedPackets) {
-                    for (Object packet : encodedPackets) {
-                        if (packet instanceof String) {
-                            self.engine.write((String)packet);
-                        } else if (packet instanceof byte[]) {
-                            self.engine.write((byte[])packet);
-                        }
+            encoder.encode(packet, encodedPackets -> {
+                for (Object packet1 : encodedPackets) {
+                    if (packet1 instanceof String) {
+                        self.engine.write((String) packet1);
+                    } else if (packet1 instanceof byte[]) {
+                        self.engine.write((byte[]) packet1);
                     }
-                    self.encoding = false;
-                    self.processPacketQueue();
                 }
+                self.encoding = false;
+                self.processPacketQueue();
             });
         } else {
             self.packetBuffer.add(packet);
@@ -392,7 +389,7 @@ public class Manager extends Emitter {
 
     private void processPacketQueue() {
         if (!packetBuffer.isEmpty() && !encoding) {
-            Packet pack = packetBuffer.remove(0);
+            Packet pack = packetBuffer.removeFirst();
             packet(pack);
         }
     }
@@ -457,43 +454,32 @@ public class Manager extends Emitter {
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    EventThread.exec(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (self.skipReconnect) return;
+                    EventThread.exec(() -> {
+                        if (self.skipReconnect) return;
 
-                            logger.fine("attempting reconnect");
-                            int attempts = self.backoff.getAttempts();
-                            self.emit(EVENT_RECONNECT_ATTEMPT, attempts);
+                        logger.fine("attempting reconnect");
+                        int attempts = self.backoff.getAttempts();
+                        self.emit(EVENT_RECONNECT_ATTEMPT, attempts);
 
-                            // check again for the case socket closed in above events
-                            if (self.skipReconnect) return;
+                        // check again for the case socket closed in above events
+                        if (self.skipReconnect) return;
 
-                            self.open(new OpenCallback() {
-                                @Override
-                                public void call(Exception err) {
-                                    if (err != null) {
-                                        logger.fine("reconnect attempt error");
-                                        self.reconnecting = false;
-                                        self.reconnect();
-                                        self.emit(EVENT_RECONNECT_ERROR, err);
-                                    } else {
-                                        logger.fine("reconnect success");
-                                        self.onReconnect();
-                                    }
-                                }
-                            });
-                        }
+                        self.open(err -> {
+                            if (err != null) {
+                                logger.fine("reconnect attempt error");
+                                self.reconnecting = false;
+                                self.reconnect();
+                                self.emit(EVENT_RECONNECT_ERROR, err);
+                            } else {
+                                logger.fine("reconnect success");
+                                self.onReconnect();
+                            }
+                        });
                     });
                 }
             }, delay);
 
-            subs.add(new On.Handle() {
-                @Override
-                public void destroy() {
-                    timer.cancel();
-                }
-            });
+            subs.add(timer::cancel);
         }
     }
 
