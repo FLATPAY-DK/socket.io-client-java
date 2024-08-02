@@ -62,7 +62,7 @@ public class IO {
         String id = parsed.id;
 
         boolean sameNamespace = managers.containsKey(id)
-                && managers.get(id).nsps.containsKey(source.getPath());
+                && managers.get(id).namespaces.containsKey(source.getPath());
         boolean newConnection = opts.forceNew || !opts.multiplex || sameNamespace;
         Manager io;
 

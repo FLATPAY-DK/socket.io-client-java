@@ -85,9 +85,9 @@ public class Manager extends Emitter {
     /*package*/ io.socket.engineio.client.Socket engine;
 
     /**
-     * This HashMap can be accessed from outside of EventThread.
+     * This HashMap can be accessed from outside EventThread.
      */
-    /*package*/ ConcurrentHashMap<String, Socket> nsps;
+    /*package*/ final ConcurrentHashMap<String, Socket> namespaces;
 
 
     public Manager() {
@@ -116,7 +116,7 @@ public class Manager extends Emitter {
             opts.callFactory = defaultCallFactory;
         }
         this.opts = opts;
-        nsps = new ConcurrentHashMap<>();
+        namespaces = new ConcurrentHashMap<>();
         subs = new LinkedList<>();
         reconnection(opts.reconnection);
         reconnectionAttempts(opts.reconnectionAttempts != 0 ? opts.reconnectionAttempts : Integer.MAX_VALUE);
@@ -329,18 +329,18 @@ public class Manager extends Emitter {
     }
 
     /**
-     * Initializes {@link Socket} instances for each namespaces.
+     * Initializes {@link Socket} instances for each namespace.
      *
      * @param nsp namespace.
      * @param opts options.
      * @return a socket instance for the namespace.
      */
     public Socket socket(final String nsp, Options opts) {
-        synchronized (nsps) {
-            Socket socket = nsps.get(nsp);
+        synchronized (namespaces) {
+            Socket socket = namespaces.get(nsp);
             if (socket == null) {
                 socket = new Socket(this, nsp, opts);
-                nsps.put(nsp, socket);
+                namespaces.put(nsp, socket);
             }
             return socket;
         }
@@ -351,8 +351,8 @@ public class Manager extends Emitter {
     }
 
     /*package*/ void destroy() {
-        synchronized (nsps) {
-            for (Socket socket : nsps.values()) {
+        synchronized (namespaces) {
+            for (Socket socket : namespaces.values()) {
                 if (socket.isActive()) {
                     logger.fine("socket is still active, skipping close");
                     return;
