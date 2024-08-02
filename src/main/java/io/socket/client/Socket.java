@@ -56,7 +56,7 @@ public class Socket extends Emitter {
 
     private volatile boolean connected;
     private int ids;
-    private String nsp;
+    private String namespace;
     private Manager io;
     private Map<String, String> auth;
     private Map<Integer, Ack> acks = new HashMap<>();
@@ -67,9 +67,9 @@ public class Socket extends Emitter {
     private ConcurrentLinkedQueue<Listener> onAnyIncomingListeners = new ConcurrentLinkedQueue<>();
     private ConcurrentLinkedQueue<Listener> onAnyOutgoingListeners = new ConcurrentLinkedQueue<>();
 
-    public Socket(Manager io, String nsp, Manager.Options opts) {
+    public Socket(Manager io, String namespace, Manager.Options opts) {
         this.io = io;
-        this.nsp = nsp;
+        this.namespace = namespace;
         if (opts != null) {
             this.auth = opts.auth;
         }
@@ -79,33 +79,15 @@ public class Socket extends Emitter {
         if (this.subs != null) return;
 
         final Manager io = Socket.this.io;
-        Socket.this.subs = new LinkedList<On.Handle>() {{
-            add(On.on(io, Manager.EVENT_OPEN, new Listener() {
-                @Override
-                public void call(Object... args) {
-                    Socket.this.onopen();
+        Socket.this.subs = new LinkedList<>() {{
+            add(On.on(io, Manager.EVENT_OPEN, args -> Socket.this.onopen()));
+            add(On.on(io, Manager.EVENT_PACKET, args -> Socket.this.onpacket((Packet<?>) args[0])));
+            add(On.on(io, Manager.EVENT_ERROR, args -> {
+                if (!Socket.this.connected) {
+                    Socket.super.emit(EVENT_CONNECT_ERROR, args[0]);
                 }
             }));
-            add(On.on(io, Manager.EVENT_PACKET, new Listener() {
-                @Override
-                public void call(Object... args) {
-                    Socket.this.onpacket((Packet<?>) args[0]);
-                }
-            }));
-            add(On.on(io, Manager.EVENT_ERROR, new Listener() {
-                @Override
-                public void call(Object... args) {
-                    if (!Socket.this.connected) {
-                        Socket.super.emit(EVENT_CONNECT_ERROR, args[0]);
-                    }
-                }
-            }));
-            add(On.on(io, Manager.EVENT_CLOSE, new Listener() {
-                @Override
-                public void call(Object... args) {
-                    Socket.this.onclose(args.length > 0 ? (String) args[0] : null);
-                }
-            }));
+            add(On.on(io, Manager.EVENT_CLOSE, args -> Socket.this.onclose(args.length > 0 ? (String) args[0] : null)));
         }};
     }
 
@@ -262,7 +244,7 @@ public class Socket extends Emitter {
                 }
             }
         }
-        packet.nsp = this.nsp;
+        packet.nsp = this.namespace;
         this.io.packet(packet);
     }
 
@@ -301,7 +283,7 @@ public class Socket extends Emitter {
     }
 
     private void onpacket(Packet<?> packet) {
-        if (!this.nsp.equals(packet.nsp)) return;
+        if (!this.namespace.equals(packet.nsp)) return;
 
         switch (packet.type) {
             case Parser.CONNECT: {
@@ -448,7 +430,7 @@ public class Socket extends Emitter {
 
     private void ondisconnect() {
         if (logger.isLoggable(Level.FINE)) {
-            logger.fine(String.format("server disconnect (%s)", this.nsp));
+            logger.fine(String.format("server disconnect (%s)", this.namespace));
         }
         this.destroy();
         this.onclose("io server disconnect");
@@ -477,7 +459,7 @@ public class Socket extends Emitter {
             public void run() {
                 if (Socket.this.connected) {
                     if (logger.isLoggable(Level.FINE)) {
-                        logger.fine(String.format("performing disconnect (%s)", Socket.this.nsp));
+                        logger.fine(String.format("performing disconnect (%s)", Socket.this.namespace));
                     }
                     Socket.this.packet(new Packet(Parser.DISCONNECT));
                 }
