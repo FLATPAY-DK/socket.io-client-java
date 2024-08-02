@@ -48,7 +48,7 @@ final public class IOParser implements Parser {
                 str.append("-");
             }
 
-            if (obj.nsp != null && obj.nsp.length() != 0 && !"/".equals(obj.nsp)) {
+            if (obj.nsp != null && !obj.nsp.isEmpty() && !"/".equals(obj.nsp)) {
                 str.append(obj.nsp);
                 str.append(",");
             }
@@ -70,9 +70,9 @@ final public class IOParser implements Parser {
         private void encodeAsBinary(Packet obj, Callback callback) {
             Binary.DeconstructedPacket deconstruction = Binary.deconstructPacket(obj);
             String pack = encodeAsString(deconstruction.packet);
-            List<Object> buffers = new ArrayList<Object>(Arrays.asList(deconstruction.buffers));
+            List<Object> buffers = new ArrayList<>(Arrays.asList(deconstruction.buffers));
 
-            buffers.add(0, pack);
+            buffers.addFirst(pack);
             callback.call(buffers.toArray());
         }
     }
@@ -197,23 +197,21 @@ final public class IOParser implements Parser {
         }
 
         private static boolean isPayloadValid(int type, Object payload) {
-            switch (type) {
-                case Parser.CONNECT:
-                case Parser.CONNECT_ERROR:
-                    return payload instanceof JSONObject;
-                case Parser.DISCONNECT:
-                    return payload == null;
-                case Parser.EVENT:
-                case Parser.BINARY_EVENT:
-                    return payload instanceof JSONArray
-                            && ((JSONArray) payload).length() > 0
-                            && !((JSONArray) payload).isNull(0);
-                case Parser.ACK:
-                case Parser.BINARY_ACK:
-                    return payload instanceof JSONArray;
-                default:
-                    return false;
-            }
+            return switch (type) {
+                case Parser.CONNECT,
+                     Parser.CONNECT_ERROR -> payload instanceof JSONObject;
+
+                case Parser.DISCONNECT -> payload == null;
+
+                case Parser.EVENT,
+                     Parser.BINARY_EVENT -> payload instanceof JSONArray
+                        && ((JSONArray) payload).length() > 0
+                        && !((JSONArray) payload).isNull(0);
+
+                case Parser.ACK,
+                     Parser.BINARY_ACK -> payload instanceof JSONArray;
+                default -> false;
+            };
         }
 
         @Override
